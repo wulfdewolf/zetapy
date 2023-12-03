@@ -1,5 +1,5 @@
-from zetapy.main import zetatest, zetatest2, zetatstest, zetatstest2, ifr
-from zetapy.plot_dependencies import plotzeta, plotzeta2, plottszeta, plottszeta2
+from zetapy.main import zetatest, zetatest2, zetapostest2, zetatstest, zetatstest2, ifr
+from zetapy.plot_dependencies import plotzeta, plotzeta2, plotzetapos2, plottszeta, plottszeta2
 from zetapy.legacy.main import getZeta, getIFR
 
 #from zetapy.msd import getMultiScaleDeriv

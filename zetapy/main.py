@@ -4,9 +4,9 @@ import logging
 
 # from zetapy import msd
 from scipy import stats
-from zetapy.dependencies import (calcZetaOne, calcZetaTwo, getTempOffsetOne, flatten, findfirst)
+from zetapy.dependencies import (calcZetaOne, calcZetaTwo, getTempOffsetOne, flatten, findfirst, calcZetaPosTwo)
 from zetapy.ifr_dependencies import (getMultiScaleDeriv, getPeak, getOnset)
-from zetapy.plot_dependencies import calculatePeths, plotzeta, plotzeta2, plottszeta, plottszeta2
+from zetapy.plot_dependencies import calculatePeths, plotzeta, plotzeta2, plottszeta, plottszeta2, plotzetapos2
 from zetapy.ts_dependencies import calcTsZetaOne, calcTsZetaTwo, getPseudoTimeSeries, getTsRefT, getInterpolatedTimeSeries
 
 # %% two-sample time-series zeta test
@@ -153,7 +153,7 @@ def zetatstest2(vecTime1, vecValue1, arrEventTimes1, vecTime2, vecValue2, arrEve
     vecTime2 = vecTime2[vecReorder]
     vecValue2 = vecValue2[vecReorder]
 
-    # ensure orientation and assert that arrEventTimes1 is a 1D or N-by-2 array of floats
+    # ensure orientation and assert that arrEventTimes1 is a 1D or N-by-2 array of dblS
     assert len(arrEventTimes1.shape) < 3 and issubclass(
         arrEventTimes1.dtype.type, np.floating), "Input arrEventTimes1 is not a 1D or 2D float np.array"
     if len(arrEventTimes1.shape) > 1:
@@ -170,7 +170,7 @@ def zetatstest2(vecTime1, vecValue1, arrEventTimes1, vecTime2, vecValue2, arrEve
     # define event starts
     vecEventStarts1 = arrEventTimes1[:, 0]
 
-    # ensure orientation and assert that arrEventTimes2 is a 1D or N-by-2 array of floats
+    # ensure orientation and assert that arrEventTimes2 is a 1D or N-by-2 array of dblS
     assert len(arrEventTimes2.shape) < 3 and issubclass(
         arrEventTimes2.dtype.type, np.floating), "Input arrEventTimes2 is not a 1D or 2D float np.array"
     if len(arrEventTimes2.shape) > 1:
@@ -391,6 +391,174 @@ def zetatstest2(vecTime1, vecValue1, arrEventTimes1, vecTime2, vecValue2, arrEve
     # %% return
     return dblZetaP, dZETA
 
+# %% two-sample positional zeta test
+def zetapostest2(dblStartPos, dblStopPos, vecSpikePositions1, vecSpikePositions2,
+              label1="Condition 1", label2="Condition 2", dblUseMaxDur=None, intResampNum=250, boolPlot=False, boolDirectQuantile=False):
+    """
+    Calculates two-sample positional zeta-test
+
+    Heimel, J.A., Meijer, G.T., Montijn, J.S. (2023). A new family of statistical tests for responses
+    in point-event and time-series data for one- and two-sample comparisons. bioRxiv
+
+    Montijn, J.S., Seignette, K., Howlett, M.H., Cazemier, J.L., Kamermans, M., Levelt, C.N.,
+    and Heimel, J.A. (2021). A parameter-free statistical test for neuronal responsiveness.
+    eLife 10, e71969.
+
+    Syntax:
+    dblZeta2P,dZETA2 = zetapostest2(dblStartPos, dblStopPos, vecSpikeTimes1,vecSpikeTimes2, intResampNum=250, boolPlot=False, boolDirectQuantile=False)
+
+
+    Parameters
+    ----------
+    dblStartPos : float
+        start of positional window of interest
+    dblStopPos : float
+        stop of positional window of interest
+    vecSpikeTimes1 : 1D array (float)
+        spike positions for condition 1.
+    vecSpikeTimes2 : 1D array (float)
+        spike positions for condition 2.
+
+    label1: string
+        label of condition 1.
+    label2: string
+        label of condition 2.
+    intResampNum : integer
+        number of resamplings (default: 250)
+        [Note: if your p-value is close to significance, you should increase this number to enhance the precision]
+    boolPlot : boolean switch
+        plotting switch (False: no plot, True: plot figure) (default: False)
+    boolDirectQuantile: boolean
+         switch to use the empirical null-distribution rather than the Gumbel approximation (default: False)
+         [Note: requires many resamplings!]
+
+    Returns
+    -------
+    dblZeta2P : float
+        p-value based on Zenith of Event-based Time-locked Anomalies for two-sample comparison
+    dZETA2 : dict
+        additional information of ZETA test
+            dblZetaP; p-value based on Zenith of Event-based Time-locked Anomalies (same as above)
+            dblZETA; responsiveness z-score (i.e., >2 is significant)
+            dblZETADeviation; temporal deviation value underlying ZETA
+            dblZetaT; time corresponding to ZETA
+            intZetaIdx; entry corresponding to ZETA
+            vecMu1; average spiking rate values per event underlying t-test for condition 1
+            vecMu2; average spiking rate values per event underlying t-test for condition 2
+            vecSpikeT: timestamps of spike times (corresponding to vecRealDiff)
+            vecRealDiff; difference between condition 1 and 2
+            vecRealFrac1; cumulative spike vector of condition 1
+            vecRealFrac2; cumulative spike vector of condition 2
+            dblD_InvSign; largest deviation of inverse sign to ZETA (i.e., -ZETA)
+            dblZetaT_InvSign; time corresponding to -ZETA
+            intZetaIdx_InvSign; entry corresponding to -ZETA
+            cellRandTime; timestamps for null-hypothesis resampled data
+            cellRandDiff; null-hypothesis temporal deviation vectors of resampled data
+
+    Code by Wolf De Wulf
+
+    """
+
+    # %% build placeholder outputs
+    dblZetaP = 1.0
+    dZETA = dict()
+
+    # fill dZETA
+    # ZETA significance
+    dZETA['dblZetaP'] = dblZetaP
+    dZETA['dblZETA'] = None
+    # data on ZETA peak
+    dZETA['dblZETADeviation'] = None
+    dZETA['dblZetaT'] = None
+    dZETA['intZetaIdx'] = None
+
+    # inverse-sign ZETA
+    dZETA['dblD_InvSign'] = None
+    dZETA['dblZetaT_InvSign'] = None
+    dZETA['intZetaIdx_InvSign'] = None
+
+    # derived from calcZetaOne
+    dZETA['vecSpikeT'] = None
+    dZETA['vecRealDiff'] = None
+    dZETA['vecRealFrac1'] = None
+    dZETA['vecRealFrac2'] = None
+    dZETA['cellRandTime'] = None
+    dZETA['cellRandDiff'] = None
+    # dZETA['dblZetaP'] = None #<-updates automatically
+    # dZETA['dblZETA'] = None #<-updates automatically
+    # dZETA['intZETAIdx'] = None #<-updates automatically
+
+    # window used for analysis
+    dZETA['dblUseMaxDur'] = None
+
+    # %% prep data and assert inputs are correct
+
+    # get resampling num
+    if intResampNum is None:
+        intResampNum = np.int64(250)
+    else:
+        intResampNum = np.int64(intResampNum)
+        assert intResampNum.size == 1 and intResampNum > 1, "intResampNum is not a positive integer"
+
+    # plotting
+    if boolPlot is None:
+        boolPlot = False
+    else:
+        assert isinstance(boolPlot, bool), "boolPlot is not a boolean"
+
+    # direct quantile comnputation
+    if boolDirectQuantile is None:
+        boolDirectQuantile = False
+    else:
+        assert isinstance(boolDirectQuantile, bool), "boolDirectQuantile is not a boolean"
+
+    # to do: parallel computing
+    boolParallel = False
+
+    # %% calculate zeta
+    dZETA_Two = calcZetaPosTwo(dblStartPos, dblStopPos, vecSpikePositions1, vecSpikePositions2, intResampNum, boolDirectQuantile)
+
+    # %% calculate zeta
+    # update and unpack
+    dZETA.update(dZETA_Two)
+    vecSpikeT = dZETA['vecSpikeT']
+    vecRealDiff = dZETA['vecRealDiff']
+    dblZetaP = dZETA['dblZetaP']
+    intZetaIdx = dZETA['intZETAIdx']
+
+    # check if calculation is valid, otherwise return empty values
+    if intZetaIdx is None:
+        logging.warning("zetatest2: calculation failed, defaulting to p=1.0")
+        return dblZetaP, dZETA
+
+    # %% extract real outputs
+    # get location
+    dblZetaT = vecSpikeT[intZetaIdx]
+    dblZETADeviation = vecRealDiff[intZetaIdx]
+
+    # find peak of inverse sign
+    intZetaIdx_InvSign = np.argmax(-np.sign(dblZETADeviation)*vecRealDiff)
+    dblZetaT_InvSign = vecSpikeT[intZetaIdx_InvSign]
+    dblD_InvSign = vecRealDiff[intZetaIdx_InvSign]
+
+    # %% build output dictionary
+    # fill dZETA
+    dZETA['dblZETADeviation'] = dblZETADeviation
+    dZETA['dblZetaT'] = dblZetaT
+
+    # inverse-sign ZETA
+    dZETA['dblD_InvSign'] = dblD_InvSign
+    dZETA['dblZetaT_InvSign'] = dblZetaT_InvSign
+    dZETA['intZetaIdx_InvSign'] = intZetaIdx_InvSign
+    # window used for analysis
+    dZETA['dblUseMaxDur'] = dblUseMaxDur
+
+    # %% plot
+    if boolPlot:
+        plotzetapos2(dblStartPos, dblStopPos, vecSpikePositions1, vecSpikePositions2, label1, label2, dZETA)
+
+    # %% return outputs
+    return dblZetaP, dZETA
 # %% two-sample zeta test
 
 
@@ -517,7 +685,7 @@ def zetatest2(vecSpikeTimes1, arrEventTimes1, vecSpikeTimes2, arrEventTimes2,
         vecSpikeTimes2.dtype.type, np.floating), "Input vecSpikeTimes2 is not a 1D float np.array with >2 spike times"
     vecSpikeTimes2 = np.sort(vecSpikeTimes2.flatten(), axis=0)
 
-    # ensure orientation and assert that arrEventTimes1 is a 1D or N-by-2 array of floats
+    # ensure orientation and assert that arrEventTimes1 is a 1D or N-by-2 array of dblS
     assert len(arrEventTimes1.shape) < 3 and issubclass(
         arrEventTimes1.dtype.type, np.floating), "Input arrEventTimes1 is not a 1D or 2D float np.array"
     if len(arrEventTimes1.shape) > 1:
@@ -534,7 +702,7 @@ def zetatest2(vecSpikeTimes1, arrEventTimes1, vecSpikeTimes2, arrEventTimes2,
     # define event starts
     vecEventStarts1 = arrEventTimes1[:, 0]
 
-    # ensure orientation and assert that arrEventTimes2 is a 1D or N-by-2 array of floats
+    # ensure orientation and assert that arrEventTimes2 is a 1D or N-by-2 array of dblS
     assert len(arrEventTimes2.shape) < 3 and issubclass(
         arrEventTimes2.dtype.type, np.floating), "Input arrEventTimes2 is not a 1D or 2D float np.array"
     if len(arrEventTimes2.shape) > 1:
@@ -796,7 +964,7 @@ def zetatstest(vecTime, vecValue, arrEventTimes,
     vecTime = vecTime[vecReorder]
     vecValue = vecValue[vecReorder]
 
-    # ensure orientation and assert that arrEventTimes is a 1D or N-by-2 array of floats
+    # ensure orientation and assert that arrEventTimes is a 1D or N-by-2 array of dblS
     assert len(arrEventTimes.shape) < 3 and issubclass(
         arrEventTimes.dtype.type, np.floating), "Input arrEventTimes is not a 1D or 2D float np.array"
     if len(arrEventTimes.shape) > 1:
@@ -1154,7 +1322,7 @@ def zetatest(vecSpikeTimes, arrEventTimes,
         vecSpikeTimes.dtype.type, np.floating), "Input vecSpikeTimes is not a 1D float np.array with >2 spike times"
     vecSpikeTimes = np.sort(vecSpikeTimes.flatten(), axis=0)
 
-    # ensure orientation and assert that arrEventTimes is a 1D or N-by-2 array of floats
+    # ensure orientation and assert that arrEventTimes is a 1D or N-by-2 array of dblS
     assert len(arrEventTimes.shape) < 3 and issubclass(
         arrEventTimes.dtype.type, np.floating), "Input arrEventTimes is not a 1D or 2D float np.array"
     if len(arrEventTimes.shape) > 1:
@@ -1408,7 +1576,7 @@ def ifr(vecSpikeTimes, vecEventTimes,
         vecSpikeTimes.dtype.type, np.floating), "Input vecSpikeTimes is not a 1D float np.array with >2 spike times"
     vecSpikeTimes = np.sort(vecSpikeTimes.flatten(), axis=0)
 
-    # ensure orientation and assert that arrEventTimes is a 1D or N-by-2 array of floats
+    # ensure orientation and assert that arrEventTimes is a 1D or N-by-2 array of dblS
     assert len(vecEventTimes.shape) < 3 and issubclass(
         vecEventTimes.dtype.type, np.floating), "Input vecEventTimes is not a 1D or 2D float np.array"
     if len(vecEventTimes.shape) > 1:

@@ -103,6 +103,103 @@ def plottszeta2(dZETA, intPlotRandSamples=50):
     f.tight_layout()
     plt.show()
 
+def plotzetapos2(dblStartPos, dblStopPos, vecSpikePositions1, vecSpikePositions2, label1, label2, dZETA,
+              intPlotRandSamples=50, intPlotSpikeNum=10000):
+    '''
+    Creates figure for two-sample ZETA-test
+
+    Syntax:
+    plotzetapos2(dblStartPos, dblStopPos, vecSpikePositions1, vecSpikePositions2, dZETA,
+              intPlotRandSamples=50, intPlotSpikeNum=10000)
+
+    Parameters
+    ----------
+    vecSpikePositions1 : 1D array (float)
+        spike positions for condition 1.
+    vecSpikePositions22 : 1D array (float)
+        spike positions for condition 2.
+    label1: string
+        label for condition 1.
+    label2: string
+        label for condition 2.
+    dZETA : dict
+        Output of zetatest2.
+    intPlotRandSamples : int, optional
+        Maximum number of random resampling to plot. The default is 50.
+    intPlotSpikeNum : int, optional
+        Maximum number of spikes to plot. The default is 10000.
+
+
+    Code by Jorrit Montijn
+
+    Version history:
+    1.0 - 25 October 2023 Created by Jorrit Montijn
+    '''
+    
+    # unpack dZETA
+    try:
+        dblZETA = dZETA['dblZETA']
+        dblZetaP = dZETA['dblZetaP']
+        dblZETADeviation = dZETA['dblZETADeviation']
+        dblZetaT = dZETA['dblZetaT']
+        
+        dblD_InvSign = dZETA['dblD_InvSign']
+        dblZetaT_InvSign = dZETA['dblZetaT_InvSign']
+
+        vecSpikeT = dZETA['vecSpikeT']
+        vecRealDiff = dZETA['vecRealDiff']
+        vecRealFrac1 = dZETA['vecRealFrac1']
+        vecRealFrac2 = dZETA['vecRealFrac2']
+        cellRandTime = dZETA['cellRandTime']
+        cellRandDiff = dZETA['cellRandDiff']
+
+    except:
+        raise Exception(
+            "plotzetapos2 error: information is missing from dZETA dictionary")
+
+    # %% plot
+    # Plot maximally 50 traces (or however man y are requested)
+    intPlotRandSamples = np.min([len(cellRandTime), intPlotRandSamples])
+
+    # Calculate optimal DPI depending on the monitor size
+    screen_width = tk.Tk().winfo_screenwidth()
+    dpi = screen_width / 15
+
+    # Create figure
+    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 6), dpi=dpi)
+
+    # top left: raster 1
+    for i, trial in enumerate(vecSpikePositions1):
+        idx = np.bitwise_and(trial >= dblStartPos, trial <= dblStopPos)
+        event_spks = trial[idx]
+        ax1.vlines(event_spks, i + 1, i, color='k', lw=0.3)
+    ax1.set(xlabel='Position (cm)', ylabel='Trial #', title=f'Spike raster {label1}')
+
+    # bottom left: raster 2
+    for i, trial in enumerate(vecSpikePositions2):
+        idx = np.bitwise_and(trial >= dblStartPos, trial <= dblStopPos)
+        event_spks = trial[idx]
+        ax3.vlines(event_spks, i + 1, i, color='k', lw=0.3)
+    ax3.set(xlabel='Position (cm)', ylabel='Trial #', title=f'Spike raster {label2}')
+
+    
+    # top right: cumulative sums
+    ax2.plot(vecSpikeT, vecRealFrac1, label=label1)
+    ax2.plot(vecSpikeT, vecRealFrac2, label=label2)
+    ax2.set(xlabel='Position (cm)', ylabel='Scaled cumulative spiking density (s)')
+    ax2.legend()
+
+    # bottom right: deviation with random jitters
+    for i in range(intPlotRandSamples-1):
+        ax4.plot(cellRandTime[i], cellRandDiff[i], color=[0.7, 0.7, 0.7])
+    ax4.plot(vecSpikeT, vecRealDiff)
+    ax4.plot(dblZetaT, dblZETADeviation, 'bx')
+    ax4.plot(dblZetaT_InvSign, dblD_InvSign, 'b*')
+    ax4.set(xlabel='Position (cm)', ylabel='Difference in cumulative density (s)')
+    ax4.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f})')
+
+    f.tight_layout()
+    plt.show()
 # %% plotzeta2
 def plotzeta2(vecSpikeTimes1, arrEventTimes1, vecSpikeTimes2, arrEventTimes2, dZETA,
               intPlotRandSamples=50, intPlotSpikeNum=10000):
