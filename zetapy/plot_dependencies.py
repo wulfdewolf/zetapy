@@ -12,8 +12,11 @@ import matplotlib.pyplot as plt
 import tkinter as tk
 from scipy.signal import convolve, gaussian
 from zetapy.ts_dependencies import getInterpolatedTimeSeries
+from zetapy.dependencies import flatten
 
 # %% plottszeta2
+
+
 def plottszeta2(dZETA, intPlotRandSamples=50):
     '''
     Creates figure for two-sample time-series ZETA-test
@@ -21,7 +24,7 @@ def plottszeta2(dZETA, intPlotRandSamples=50):
     Syntax:
     plottszeta2(dZETA, intPlotRandSamples=50)
     '''
-    
+
     # unpack dZETA
     try:
         dblZetaP = dZETA['dblZetaP']
@@ -29,10 +32,10 @@ def plottszeta2(dZETA, intPlotRandSamples=50):
         dblZETADeviation = dZETA['dblZETADeviation']
         dblZETATime = dZETA['dblZETATime']
         intZETAIdx = dZETA['intZETAIdx']
-        dblMeanZ   = dZETA['dblMeanZ']
-        dblMeanP  = dZETA['dblMeanP']
+        dblMeanZ = dZETA['dblMeanZ']
+        dblMeanP = dZETA['dblMeanP']
         vecMu1 = dZETA['vecMu1']
-        vecMu2  = dZETA['vecMu2']
+        vecMu2 = dZETA['vecMu2']
         dblZETADeviation_InvSign = dZETA['dblZETADeviation_InvSign']
         dblZETATime_InvSign = dZETA['dblZETATime_InvSign']
         intZETAIdx_InvSign = dZETA['intZETAIdx_InvSign']
@@ -58,14 +61,15 @@ def plottszeta2(dZETA, intPlotRandSamples=50):
 
     # Create figure
     f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 6), dpi=dpi)
-    
+
     # top left: heat map 1
     x0 = vecRefTime[1]
     x1 = vecRefTime[-1]
     xw = x1-x0
     intTrialNum1 = matTracePerTrial1.shape[0]
     yh = intTrialNum1-1
-    pos = ax1.imshow(matTracePerTrial1, interpolation='none', extent=[x0, x1, 1, intTrialNum1])
+    pos = ax1.imshow(matTracePerTrial1, interpolation='none',
+                     extent=[x0, x1, 1, intTrialNum1])
     ax1.set_aspect((xw/yh)/2)
     ax1.set(xlabel='Time after event (s)', ylabel='Trial number',
             title='Cond1; Color indicates data value')
@@ -77,12 +81,13 @@ def plottszeta2(dZETA, intPlotRandSamples=50):
     xw = x1-x0
     intTrialNum2 = matTracePerTrial2.shape[0]
     yh = intTrialNum2-1
-    pos = ax2.imshow(matTracePerTrial2, interpolation='none', extent=[x0, x1, 1, intTrialNum2])
+    pos = ax2.imshow(matTracePerTrial2, interpolation='none',
+                     extent=[x0, x1, 1, intTrialNum2])
     ax2.set_aspect((xw/yh)/2)
     ax2.set(xlabel='Time after event (s)', ylabel='Trial number',
             title='Cond2; Color indicates data value')
     f.colorbar(pos, ax=ax2)
-    
+
     # top right: cumulative sums
     ax3.plot(vecRefTime, vecRealFrac1)
     ax3.plot(vecRefTime, vecRealFrac2)
@@ -90,21 +95,24 @@ def plottszeta2(dZETA, intPlotRandSamples=50):
 
     # bottom right: deviation with random bootstraps
     for i in range(intPlotRandSamples-1):
-        ax4.plot(vecRefTime, matRandDiff[i,:], color=[0.7, 0.7, 0.7])
+        ax4.plot(vecRefTime, matRandDiff[i, :], color=[0.7, 0.7, 0.7])
     ax4.plot(vecRefTime, vecRealDiff)
     ax4.plot(dblZETATime, dblZETADeviation, 'bx')
     ax4.plot(dblZETATime_InvSign, dblZETADeviation_InvSign, 'b*')
-    ax4.set(xlabel='Time after event (s)', ylabel='Difference in cumulative density')
+    ax4.set(xlabel='Time after event (s)',
+            ylabel='Difference in cumulative density')
     if dblMeanZ is not None:
-        ax4.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f}), z(Hz)={dblMeanZ:.3f} (p={dblMeanP:.3f})')
+        ax4.set(
+            title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f}), z(Hz)={dblMeanZ:.3f} (p={dblMeanP:.3f})')
     else:
         ax4.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f})')
 
     f.tight_layout()
     plt.show()
 
+
 def plotzetapos2(dblStartPos, dblStopPos, vecSpikePositions1, vecSpikePositions2, label1, label2, dZETA,
-              intPlotRandSamples=50, intPlotSpikeNum=10000):
+                 intPlotRandSamples=50):
     '''
     Creates figure for two-sample ZETA-test
 
@@ -126,23 +134,20 @@ def plotzetapos2(dblStartPos, dblStopPos, vecSpikePositions1, vecSpikePositions2
         Output of zetatest2.
     intPlotRandSamples : int, optional
         Maximum number of random resampling to plot. The default is 50.
-    intPlotSpikeNum : int, optional
-        Maximum number of spikes to plot. The default is 10000.
-
 
     Code by Jorrit Montijn
 
     Version history:
     1.0 - 25 October 2023 Created by Jorrit Montijn
     '''
-    
+
     # unpack dZETA
     try:
         dblZETA = dZETA['dblZETA']
         dblZetaP = dZETA['dblZetaP']
         dblZETADeviation = dZETA['dblZETADeviation']
         dblZetaT = dZETA['dblZetaT']
-        
+
         dblD_InvSign = dZETA['dblD_InvSign']
         dblZetaT_InvSign = dZETA['dblZetaT_InvSign']
 
@@ -161,32 +166,30 @@ def plotzetapos2(dblStartPos, dblStopPos, vecSpikePositions1, vecSpikePositions2
     # Plot maximally 50 traces (or however man y are requested)
     intPlotRandSamples = np.min([len(cellRandTime), intPlotRandSamples])
 
-    # Calculate optimal DPI depending on the monitor size
-    screen_width = tk.Tk().winfo_screenwidth()
-    dpi = screen_width / 15
-
     # Create figure
-    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 6), dpi=dpi)
+    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 6))
 
     # top left: raster 1
     for i, trial in enumerate(vecSpikePositions1):
         idx = np.bitwise_and(trial >= dblStartPos, trial <= dblStopPos)
         event_spks = trial[idx]
         ax1.vlines(event_spks, i + 1, i, color='k', lw=0.3)
-    ax1.set(xlabel='Position (cm)', ylabel='Trial #', title=f'Spike raster {label1}')
+    ax1.set(xlabel='Position (cm)', ylabel='Trial #',
+            title=f'Spike raster {label1}')
 
     # bottom left: raster 2
     for i, trial in enumerate(vecSpikePositions2):
         idx = np.bitwise_and(trial >= dblStartPos, trial <= dblStopPos)
         event_spks = trial[idx]
         ax3.vlines(event_spks, i + 1, i, color='k', lw=0.3)
-    ax3.set(xlabel='Position (cm)', ylabel='Trial #', title=f'Spike raster {label2}')
+    ax3.set(xlabel='Position (cm)', ylabel='Trial #',
+            title=f'Spike raster {label2}')
 
-    
     # top right: cumulative sums
     ax2.plot(vecSpikeT, vecRealFrac1, label=label1)
     ax2.plot(vecSpikeT, vecRealFrac2, label=label2)
-    ax2.set(xlabel='Position (cm)', ylabel='Scaled cumulative spiking density (s)')
+    ax2.set(xlabel='Position (cm)',
+            ylabel='Scaled cumulative spiking density (s)')
     ax2.legend()
 
     # bottom right: deviation with random jitters
@@ -195,12 +198,15 @@ def plotzetapos2(dblStartPos, dblStopPos, vecSpikePositions1, vecSpikePositions2
     ax4.plot(vecSpikeT, vecRealDiff)
     ax4.plot(dblZetaT, dblZETADeviation, 'bx')
     ax4.plot(dblZetaT_InvSign, dblD_InvSign, 'b*')
-    ax4.set(xlabel='Position (cm)', ylabel='Difference in cumulative density (s)')
+    ax4.set(xlabel='Position (cm)',
+            ylabel='Difference in cumulative density (s)')
     ax4.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f})')
 
     f.tight_layout()
-    plt.show()
+    # plt.show()
 # %% plotzeta2
+
+
 def plotzeta2(vecSpikeTimes1, arrEventTimes1, vecSpikeTimes2, arrEventTimes2, dZETA,
               intPlotRandSamples=50, intPlotSpikeNum=10000):
     '''
@@ -233,9 +239,9 @@ def plotzeta2(vecSpikeTimes1, arrEventTimes1, vecSpikeTimes2, arrEventTimes2, dZ
     Version history:
     1.0 - 25 October 2023 Created by Jorrit Montijn
     '''
-    
+
     # %% check input
-    
+
     # vecSpikeTimes1 must be [S by 1] array
     assert (len(vecSpikeTimes1.shape) == 1 or vecSpikeTimes1.shape[1] == 1) and issubclass(
         vecSpikeTimes1.dtype.type, np.floating), "Input vecSpikeTimes1 is not a 1D float np.array with >2 spike times"
@@ -288,7 +294,7 @@ def plotzeta2(vecSpikeTimes1, arrEventTimes1, vecSpikeTimes2, arrEventTimes2, dZ
         dblZETADeviation = dZETA['dblZETADeviation']
         dblZetaT = dZETA['dblZetaT']
         intZetaIdx = dZETA['intZetaIdx']
-        
+
         dblD_InvSign = dZETA['dblD_InvSign']
         dblZetaT_InvSign = dZETA['dblZetaT_InvSign']
         intZetaIdx_InvSign = dZETA['intZetaIdx_InvSign']
@@ -320,34 +326,43 @@ def plotzeta2(vecSpikeTimes1, arrEventTimes1, vecSpikeTimes2, arrEventTimes2, dZ
 
     # reduce spikes
     if vecSpikeTimes1.size > intPlotSpikeNum or vecSpikeTimes2.size > intPlotSpikeNum:
-        dblReduceSpikesBy = min(vecSpikeTimes1.size / intPlotSpikeNum, vecSpikeTimes2.size / intPlotSpikeNum)
-        intPlotSpikeNum1 = np.round(dblReduceSpikesBy * vecSpikeTimes1.size).astype(int)
-        intPlotSpikeNum2 = np.round(dblReduceSpikesBy * vecSpikeTimes2.size).astype(int)
-        vecSpikeT1_reduced = vecSpikeTimes1[np.round(np.linspace(0, vecSpikeTimes1.size-1, intPlotSpikeNum1)).astype(int)]
-        vecSpikeT2_reduced = vecSpikeTimes1[np.round(np.linspace(0, vecSpikeTimes2.size-1, intPlotSpikeNum2)).astype(int)]
+        dblReduceSpikesBy = min(
+            vecSpikeTimes1.size / intPlotSpikeNum, vecSpikeTimes2.size / intPlotSpikeNum)
+        intPlotSpikeNum1 = np.round(
+            dblReduceSpikesBy * vecSpikeTimes1.size).astype(int)
+        intPlotSpikeNum2 = np.round(
+            dblReduceSpikesBy * vecSpikeTimes2.size).astype(int)
+        vecSpikeT1_reduced = vecSpikeTimes1[np.round(np.linspace(
+            0, vecSpikeTimes1.size-1, intPlotSpikeNum1)).astype(int)]
+        vecSpikeT2_reduced = vecSpikeTimes1[np.round(np.linspace(
+            0, vecSpikeTimes2.size-1, intPlotSpikeNum2)).astype(int)]
     else:
         vecSpikeT1_reduced = vecSpikeTimes1
         vecSpikeT2_reduced = vecSpikeTimes2
 
     # top left: raster 1
     for i, t in enumerate(vecEventStarts1):
-        idx = np.bitwise_and(vecSpikeT1_reduced >= t, vecSpikeT1_reduced <= t + dblUseMaxDur)
+        idx = np.bitwise_and(vecSpikeT1_reduced >= t,
+                             vecSpikeT1_reduced <= t + dblUseMaxDur)
         event_spks = vecSpikeT1_reduced[idx]
         ax1.vlines(event_spks - t, i + 1, i, color='k', lw=0.3)
-    ax1.set(xlabel='Time after event (s)', ylabel='Trial #', title='Spike raster plot 1')
+    ax1.set(xlabel='Time after event (s)',
+            ylabel='Trial #', title='Spike raster plot 1')
 
     # bottom left: raster 2
     for i, t in enumerate(vecEventStarts2):
-        idx = np.bitwise_and(vecSpikeT2_reduced >= t, vecSpikeT2_reduced <= t + dblUseMaxDur)
+        idx = np.bitwise_and(vecSpikeT2_reduced >= t,
+                             vecSpikeT2_reduced <= t + dblUseMaxDur)
         event_spks = vecSpikeT2_reduced[idx]
         ax3.vlines(event_spks - t, i + 1, i, color='k', lw=0.3)
-    ax3.set(xlabel='Time after event (s)', ylabel='Trial #', title='Spike raster plot 2')
+    ax3.set(xlabel='Time after event (s)',
+            ylabel='Trial #', title='Spike raster plot 2')
 
-    
     # top right: cumulative sums
     ax2.plot(vecSpikeT, vecRealFrac1)
     ax2.plot(vecSpikeT, vecRealFrac2)
-    ax2.set(xlabel='Time after event (s)', ylabel='Scaled cumulative spiking density (s)')
+    ax2.set(xlabel='Time after event (s)',
+            ylabel='Scaled cumulative spiking density (s)')
 
     # bottom right: deviation with random jitters
     for i in range(intPlotRandSamples-1):
@@ -355,16 +370,151 @@ def plotzeta2(vecSpikeTimes1, arrEventTimes1, vecSpikeTimes2, arrEventTimes2, dZ
     ax4.plot(vecSpikeT, vecRealDiff)
     ax4.plot(dblZetaT, dblZETADeviation, 'bx')
     ax4.plot(dblZetaT_InvSign, dblD_InvSign, 'b*')
-    ax4.set(xlabel='Time after event (s)', ylabel='Difference in cumulative density (s)')
+    ax4.set(xlabel='Time after event (s)',
+            ylabel='Difference in cumulative density (s)')
     if dblMeanZ is not None:
-        ax4.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f}), z(Hz)={dblMeanZ:.3f} (p={dblMeanP:.3f})')
+        ax4.set(
+            title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f}), z(Hz)={dblMeanZ:.3f} (p={dblMeanP:.3f})')
     else:
         ax4.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f})')
 
     f.tight_layout()
     plt.show()
 
+# %% plotzetapos
+
+
+def plotzetapos(dblStartPos, dblStopPos, vecSpikePositions, dZETA, dRate,
+                intPlotRandSamples=50, intPlotSpikeNum=10000):
+    '''
+    Creates figure for ZETA-test analysis
+
+    Syntax:
+    plotzetapos(dblStartPos, dblStopPos, vecSpikePositions, dZETA, dRate, intPlotRandSamples=50, intPlotSpikeNum=10000)
+
+    Parameters
+    ----------
+    dblStartPos: float
+        start of positional window of interest
+    dblStopPos: float
+        start of positional window of interest
+    vecSpikePositions : 1D array (float)
+        spike positions
+    dZETA : dict
+        Output of zetatest.
+    dRate : dict
+        Output of zetatest.
+    intPlotRandSamples : int, optional
+        Maximum number of random resampling to plot. The default is 50.
+
+    Code by Jorrit Montijn
+
+    Version history:
+    1.0 - 07 September 2023 Created by Jorrit Montijn
+    '''
+
+    # unpack dZETA
+    try:
+        dblZETA = dZETA['dblZETA']
+        dblZetaP = dZETA['dblZetaP']
+        dblZETADeviation = dZETA['dblZETADeviation']
+        dblLatencyZETA = dZETA['dblLatencyZETA']
+
+        dblD_InvSign = dZETA['dblD_InvSign']
+        dblLatencyInvZETA = dZETA['dblLatencyInvZETA']
+        intIdx_InvSign = dZETA['intIdx_InvSign']
+
+        vecSpikeT = dZETA['vecSpikeT']
+        vecRealDeviation = dZETA['vecRealDeviation']
+        vecRealFrac = dZETA['vecRealFrac']
+        vecRealFracLinear = dZETA['vecRealFracLinear']
+        cellRandTime = dZETA['cellRandTime']
+        cellRandDeviation = dZETA['cellRandDeviation']
+        intZETAIdx = dZETA['intZETAIdx']
+
+    except:
+        raise Exception(
+            "plotzeta error: information is missing from dZETA dictionary")
+
+    # unpack dRate
+    try:
+        vecRate = dRate['vecRate']
+        vecRateT = dRate['vecT']
+        vecM = dRate['vecM']
+        vecScale = dRate['vecScale']
+        matMSD = dRate['matMSD']
+        vecV = dRate['vecV']
+        dblSmoothSd = dRate['dblSmoothSd']
+        dblMeanRate = dRate['dblMeanRate']
+    except:
+        raise Exception(
+            "plotzeta error: information is missing from dRate dictionary")
+
+    # %% plot
+    # Plot maximally 50 traces (or however man y are requested)
+    intPlotRandSamples = np.min([len(cellRandTime), intPlotRandSamples])
+
+    # Create figure
+    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 6))
+
+    # top left: raster
+    for i, trial in enumerate(vecSpikePositions):
+        idx = np.bitwise_and(trial >= dblStartPos, trial <= dblStopPos)
+        event_spks = trial[idx]
+        ax1.vlines(event_spks, i + 1, i, color='k', lw=0.3)
+    ax1.set(xlabel='Position (cm)', ylabel='Trial #',
+            title=f'Spike raster')
+
+    # top right: psth
+    flat = np.array(flatten(vecSpikePositions))
+    duration = dblStopPos-dblStartPos
+    peth, binned_spikes = calculatePeths(flat, np.ones(flat.shape), [1],
+                                         np.array([dblStartPos for _ in vecSpikePositions]), pre_time=0, post_time=duration,
+                                         bin_size=duration/25, smoothing=0)
+    ax2.errorbar(peth['tscale'], peth['means'][0, :], yerr=peth['sems'])
+    ax2.set(xlabel='Time after event (s)', ylabel='spks/s',
+            title='Mean spiking over trials')
+
+    # bottom left: deviation with random jitters
+    for i in range(intPlotRandSamples-1):
+        ax3.plot(cellRandTime[i], cellRandDeviation[i], color=[0.7, 0.7, 0.7])
+    ax3.plot(vecSpikeT, vecRealDeviation)
+    ax3.plot(dblLatencyZETA, dblZETADeviation, 'bx')
+    ax3.plot(dblLatencyInvZETA, dblD_InvSign, 'b*')
+    ax3.set(xlabel='Time after event (s)',
+            ylabel='Spiking density anomaly (s)')
+    ax3.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f})')
+
+    # bottom right: ifr
+    if len(vecRateT) > 1000:
+        vecSubset = np.round(np.linspace(0, len(vecRateT)-1, 1000)).astype(int)
+        ax4.plot(vecRateT[vecSubset], vecRate[vecSubset])
+    else:
+        ax4.plot(vecRateT, vecRate)
+
+    if dblMeanRate == 1:
+        strLabelY = 'Time-locked activation (a.u.)'
+    else:
+        strLabelY = 'Spiking rate (Hz)'
+    ax4.set(xlabel='Time after event (s)', ylabel=strLabelY,
+            title='IFR (instantaneous firing rate)')
+
+    # plot onsets
+    vecLatencies = dZETA['vecLatencies']
+    vecLatencyVals = dZETA['vecLatencyVals']
+    if len(vecLatencies) > 2 and vecLatencies[2] is not None and ~np.isnan(vecLatencies[2]):
+        # plot peak time
+        ax4.plot(vecLatencies[2], vecLatencyVals[2], 'gx')
+
+    if len(vecLatencies) > 3 and vecLatencies[3] is not None and ~np.isnan(vecLatencies[3]):
+        # plot onset time
+        ax4.plot(vecLatencies[3], vecLatencyVals[3], 'rx')
+
+    f.tight_layout()
+    plt.show()
 # %% plotzeta
+
+
 def plotzeta(vecSpikeTimes, arrEventTimes, dZETA, dRate,
              intPlotRandSamples=50, intPlotSpikeNum=10000):
     '''
@@ -472,15 +622,18 @@ def plotzeta(vecSpikeTimes, arrEventTimes, dZETA, dRate,
 
     # top left: raster
     if vecSpikeTimes.size > intPlotSpikeNum:
-        vecSpikeT_reduced = vecSpikeTimes[np.round(np.linspace(0, vecSpikeTimes.size-1, intPlotSpikeNum)).astype(int)]
+        vecSpikeT_reduced = vecSpikeTimes[np.round(np.linspace(
+            0, vecSpikeTimes.size-1, intPlotSpikeNum)).astype(int)]
     else:
         vecSpikeT_reduced = vecSpikeTimes
 
     for i, t in enumerate(vecEventStarts):
-        idx = np.bitwise_and(vecSpikeT_reduced >= t, vecSpikeT_reduced <= t + dblUseMaxDur)
+        idx = np.bitwise_and(vecSpikeT_reduced >= t,
+                             vecSpikeT_reduced <= t + dblUseMaxDur)
         event_spks = vecSpikeT_reduced[idx]
         ax1.vlines(event_spks - t, i + 1, i, color='k', lw=0.3)
-    ax1.set(xlabel='Time after event (s)', ylabel='Trial #', title='Spike raster plot')
+    ax1.set(xlabel='Time after event (s)',
+            ylabel='Trial #', title='Spike raster plot')
 
     # top right: psth
     peth, binned_spikes = calculatePeths(vecSpikeTimes, np.ones(vecSpikeTimes.shape), [1],
@@ -496,9 +649,11 @@ def plotzeta(vecSpikeTimes, arrEventTimes, dZETA, dRate,
     ax3.plot(vecSpikeT, vecRealDeviation)
     ax3.plot(dblLatencyZETA, dblZETADeviation, 'bx')
     ax3.plot(dblLatencyInvZETA, dblD_InvSign, 'b*')
-    ax3.set(xlabel='Time after event (s)', ylabel='Spiking density anomaly (s)')
+    ax3.set(xlabel='Time after event (s)',
+            ylabel='Spiking density anomaly (s)')
     if dblMeanZ is not None:
-        ax3.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f}), z(Hz)={dblMeanZ:.3f} (p={dblMeanP:.3f})')
+        ax3.set(
+            title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f}), z(Hz)={dblMeanZ:.3f} (p={dblMeanP:.3f})')
     else:
         ax3.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f})')
 
@@ -513,7 +668,8 @@ def plotzeta(vecSpikeTimes, arrEventTimes, dZETA, dRate,
         strLabelY = 'Time-locked activation (a.u.)'
     else:
         strLabelY = 'Spiking rate (Hz)'
-    ax4.set(xlabel='Time after event (s)', ylabel=strLabelY, title='IFR (instantaneous firing rate)')
+    ax4.set(xlabel='Time after event (s)', ylabel=strLabelY,
+            title='IFR (instantaneous firing rate)')
 
     # plot onsets
     vecLatencies = dZETA['vecLatencies']
@@ -596,7 +752,8 @@ def plottszeta(vecTime, vecData, arrEventTimes, dZETA, intPlotRandSamples=50):
             strMsg2 = f"Number of events ({vecEventTimes.size}) is too few; "
         else:
             strMsg2 = ""
-            logging.warning("plottszeta: " + strMsg1 + strMsg2 + "defaulting to p=1.0")
+            logging.warning("plottszeta: " + strMsg1 +
+                            strMsg2 + "defaulting to p=1.0")
 
     # unpack dZETA
     try:
@@ -634,8 +791,10 @@ def plottszeta(vecTime, vecData, arrEventTimes, dZETA, intPlotRandSamples=50):
     # %% calculate heat map
     # sampling interval
     dblSamplingInterval = np.median(np.diff(vecTime))
-    vecRefT = np.arange(dblSamplingInterval/2, dblUseMaxDur, dblSamplingInterval)
-    vecRefT, matAct = getInterpolatedTimeSeries(vecTime, vecData, vecEventTimes, vecRefT)
+    vecRefT = np.arange(dblSamplingInterval/2,
+                        dblUseMaxDur, dblSamplingInterval)
+    vecRefT, matAct = getInterpolatedTimeSeries(
+        vecTime, vecData, vecEventTimes, vecRefT)
 
     # %% plot
     # Plot maximally 50 traces (or however man y are requested)
@@ -654,7 +813,8 @@ def plottszeta(vecTime, vecData, arrEventTimes, dZETA, intPlotRandSamples=50):
     xw = x1-x0
     intTrialNum = matAct.shape[0]
     yh = intTrialNum-1
-    pos = ax1.imshow(matAct, interpolation='none', extent=[x0, x1, 1, intTrialNum])
+    pos = ax1.imshow(matAct, interpolation='none',
+                     extent=[x0, x1, 1, intTrialNum])
     ax1.set_aspect((xw/yh)/2)
     ax1.set(xlabel='Time after event (s)', ylabel='Trial number',
             title='Color indicates data value')
@@ -673,7 +833,8 @@ def plottszeta(vecTime, vecData, arrEventTimes, dZETA, intPlotRandSamples=50):
     vecRealFracLinear = dZETA['vecRealFracLinear']
     ax3.plot(vecRealTime, vecRealFrac)
     ax3.plot(vecRealTime, vecRealFracLinear, color=[0.7, 0.7, 0.7])
-    ax3.set(xlabel='Time after event (s)', ylabel='Cumulative data', title='Time-series zeta-test')
+    ax3.set(xlabel='Time after event (s)',
+            ylabel='Cumulative data', title='Time-series zeta-test')
 
     # bottom right: deviation with random jitters
     for i in range(intPlotRandSamples-1):
@@ -683,12 +844,14 @@ def plottszeta(vecTime, vecData, arrEventTimes, dZETA, intPlotRandSamples=50):
     ax4.plot(dblLatencyInvZETA, dblD_InvSign, 'b*')
     ax4.set(xlabel='Time after event (s)', ylabel='Data amplitude anomaly')
     if dblMeanZ is not None:
-        ax4.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f}), z(Hz)={dblMeanZ:.3f} (p={dblMeanP:.3f})')
+        ax4.set(
+            title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f}), z(Hz)={dblMeanZ:.3f} (p={dblMeanP:.3f})')
     else:
         ax4.set(title=f'ZETA={dblZETA:.3f} (p={dblZetaP:.3f})')
 
     f.tight_layout()
     plt.show()
+
 
 def calculatePeths(
         spike_times, spike_clusters, cluster_ids, align_times, pre_time=0.2,
@@ -696,10 +859,10 @@ def calculatePeths(
     """
     Calcluate peri-event time histograms; return means and standard deviations
     for each time point across specified clusters
-    
+
     Code modified from Brainbox library of the International Brain Laboratory
     https://github.com/int-brain-lab/ibllib/blob/master/brainbox/singlecell.py
-    
+
     :param spike_times: spike times (in seconds)
     :type spike_times: array-like
     :param spike_clusters: cluster ids corresponding to each event in `spikes`
@@ -725,11 +888,13 @@ def calculatePeths(
     """
 
     # initialize containers
-    n_offset = 5 * int(np.ceil(smoothing / bin_size))  # get rid of boundary effects for smoothing
+    # get rid of boundary effects for smoothing
+    n_offset = 5 * int(np.ceil(smoothing / bin_size))
     n_bins_pre = int(np.ceil(pre_time / bin_size)) + n_offset
     n_bins_post = int(np.ceil(post_time / bin_size)) + n_offset
     n_bins = n_bins_pre + n_bins_post
-    binned_spikes = np.zeros(shape=(len(align_times), len(cluster_ids), n_bins))
+    binned_spikes = np.zeros(
+        shape=(len(align_times), len(cluster_ids), n_bins))
 
     # build gaussian kernel if requested
     if smoothing > 0:
@@ -765,7 +930,8 @@ def calculatePeths(
         xind = (np.floor((i_spikes - np.min(ts)) / bin_size)).astype(np.int64)
         yscale, yind = np.unique(i_clusters, return_inverse=True)
         nx, ny = [xscale.size, yscale.size]
-        ind2d = np.ravel_multi_index(np.c_[yind, xind].transpose(), dims=(ny, nx))
+        ind2d = np.ravel_multi_index(
+            np.c_[yind, xind].transpose(), dims=(ny, nx))
         r = np.bincount(ind2d, minlength=nx * ny, weights=None).reshape(ny, nx)
 
         # store (ts represent bin edges, so there are one fewer bins)
