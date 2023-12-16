@@ -774,7 +774,7 @@ def getTempOffsetOne(vecSpikeTimes, vecEventTimes, dblUseMaxDur):
 def getUniqueSpikes(vecSpikesInTrial):
     # introduce random minimum jitter to identical spikes
     dblMinOffset = np.finfo(vecSpikesInTrial.dtype.type).eps
-    vecOffsets = np.arange(-dblMinOffset*100, dblMinOffset*100, dblMinOffset)
+    vecOffsets = np.arange(-dblMinOffset*1000, dblMinOffset*1000, dblMinOffset)
     vecUniqueSpikes, vecIdx = np.unique(vecSpikesInTrial, return_index=True)
     while vecUniqueSpikes.shape[0] != vecSpikesInTrial.shape[0]:
         indDuplicates = ~np.isin(np.arange(vecSpikesInTrial.shape[0]), vecIdx)
@@ -782,7 +782,6 @@ def getUniqueSpikes(vecSpikesInTrial):
         vecSpikesInTrial[indDuplicates] += vecRandomOffsets
         vecUniqueSpikes, vecIdx = np.unique(
             vecSpikesInTrial, return_index=True)
-
     return vecSpikesInTrial
 
 # %%
